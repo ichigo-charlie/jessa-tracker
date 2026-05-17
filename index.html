@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Jessa's Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Jessa">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #FDF9F3; --surface: #FFFFFF; --surface2: #F5F0E8;
+  --border: rgba(0,0,0,0.08); --text: #1E1C19; --text2: #5A5750; --text3: #9A9590;
+  --green: #2D7D3A; --green-bg: #E8F5EA; --green-light: #F0FAF1;
+  --red: #C0392B; --red-bg: #FDECEA;
+  --amber: #B45309; --amber-bg: #FEF3C7;
+  --blue: #1D4ED8; --blue-bg: #EFF6FF;
+  --purple: #6D28D9; --purple-bg: #F5F3FF;
+  --gold: #D97706; --radius: 16px; --radius-sm: 10px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 430px; margin: 0 auto; }
+
+.header { background: var(--text); color: white; padding: 20px 20px 16px; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.header-name { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.header-sub { font-size: 12px; opacity: 0.5; margin-top: 2px; }
+.sync-btn { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer; }
+
+.nav { display: flex; background: var(--surface); border-bottom: 0.5px solid var(--border); }
+.nav-btn { flex: 1; padding: 11px 8px; border: none; background: none; font-size: 12px; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; }
+.nav-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
+.page { display: none; padding: 16px; padding-bottom: 90px; }
+.page.active { display: block; }
+.section-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin: 16px 0 8px; }
+
+/* This month card */
+.month-card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; margin-bottom: 12px; }
+.month-card-title { padding: 12px 16px 8px; border-bottom: 0.5px solid var(--border); }
+.month-card-title p { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; }
+.month-stats { display: flex; }
+.month-stat { flex: 1; padding: 12px 16px; border-right: 0.5px solid var(--border); }
+.month-stat:last-child { border-right: none; }
+.month-stat .ms-label { font-size: 11px; color: var(--text3); margin-bottom: 3px; }
+.month-stat .ms-val { font-size: 16px; font-weight: 700; }
+.month-stat .ms-val.green { color: var(--green); }
+.month-stat .ms-val.red { color: var(--red); }
+.month-stat .ms-val.amber { color: var(--amber); }
+
+/* Overall advances card */
+.overall-card { background: var(--text); color: white; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; }
+.overall-stat .ol { font-size: 11px; opacity: 0.55; margin-bottom: 3px; }
+.overall-stat .ov { font-size: 18px; font-weight: 700; }
+
+/* Advance cards */
+.advance-card { background: var(--surface); border-radius: var(--radius-sm); border: 0.5px solid var(--border); margin-bottom: 10px; overflow: hidden; cursor: pointer; }
+.advance-card:active { background: var(--surface2); }
+.advance-top { padding: 14px 16px 10px; }
+.advance-row1 { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.advance-name { font-size: 15px; font-weight: 700; }
+.advance-tag { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.tag-paid { background: var(--green-bg); color: var(--green); }
+.tag-almost { background: var(--amber-bg); color: var(--amber); }
+.tag-ongoing { background: var(--blue-bg); color: var(--blue); }
+.progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin: 4px 0 10px; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.fill-paid { background: var(--green); }
+.fill-almost { background: var(--gold); }
+.fill-ongoing { background: var(--blue); }
+.advance-nums { display: flex; justify-content: space-between; font-size: 12px; color: var(--text3); }
+.advance-nums span b { color: var(--text); font-size: 13px; }
+.advance-bottom { background: var(--surface2); padding: 8px 16px; font-size: 12px; color: var(--text2); display: flex; justify-content: space-between; align-items: center; }
+.advance-bottom b { color: var(--text); }
+
+/* History items */
+.tx-item { background: var(--surface); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 6px; border: 0.5px solid var(--border); }
+.tx-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.tx-left { flex: 1; }
+.tx-desc { font-size: 14px; font-weight: 500; color: var(--text); }
+.tx-meta { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.tx-right { text-align: right; flex-shrink: 0; }
+.tx-amt { font-size: 15px; font-weight: 600; }
+.tx-amt.green { color: var(--green); }
+.tx-amt.red { color: var(--red); }
+.tx-amt.amber { color: var(--amber); }
+.tx-amt.purple { color: var(--purple); }
+.tx-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-top: 4px; }
+.tx-badge.salary { background: var(--green-bg); color: var(--green); }
+.tx-badge.advance { background: var(--red-bg); color: var(--red); }
+.tx-badge.deduction { background: var(--amber-bg); color: var(--amber); }
+.tx-badge.payment { background: var(--purple-bg); color: var(--purple); }
+
+/* Payslip */
+.payslip { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; margin-bottom: 16px; }
+.payslip-header { background: var(--text); color: white; padding: 16px; text-align: center; }
+.payslip-header h2 { font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.payslip-header p { font-size: 12px; opacity: 0.5; margin-top: 2px; }
+.payslip-name { text-align: center; padding: 14px 16px; border-bottom: 0.5px solid var(--border); }
+.payslip-name .name { font-size: 20px; font-weight: 700; }
+.payslip-name .period { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.payslip-row { display: flex; justify-content: space-between; padding: 10px 16px; border-bottom: 0.5px solid var(--border); }
+.payslip-row .key { font-size: 14px; color: var(--text2); }
+.payslip-row .val { font-size: 14px; font-weight: 600; }
+.payslip-row .val.red { color: var(--red); }
+.payslip-total { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--green-light); }
+.payslip-total .key { font-size: 15px; font-weight: 700; color: var(--green); }
+.payslip-total .val { font-size: 18px; font-weight: 800; color: var(--green); }
+.payslip-note { text-align: center; padding: 10px 16px; font-size: 12px; color: var(--text3); font-style: italic; }
+.period-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+.period-btn { flex: 1; padding: 9px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-size: 13px; cursor: pointer; font-weight: 500; color: var(--text2); text-align: center; }
+.period-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+/* Detail view */
+.detail-view { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 150; overflow-y: auto; max-width: 430px; margin: 0 auto; }
+.detail-view.open { display: block; }
+.detail-header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 16px 20px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; }
+.back-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text); padding: 0 4px; }
+.detail-header h2 { font-size: 16px; font-weight: 700; }
+.detail-balance-card { margin: 16px; background: var(--text); color: white; border-radius: var(--radius); padding: 20px; }
+.detail-balance-card .rem-label { font-size: 11px; opacity: 0.6; margin-bottom: 4px; }
+.detail-balance-card .rem-amt { font-size: 30px; font-weight: 700; letter-spacing: -1px; margin-bottom: 14px; }
+.detail-stats { display: flex; gap: 8px; }
+.detail-stat { flex: 1; background: rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 12px; }
+.detail-stat .sl { font-size: 10px; opacity: 0.6; margin-bottom: 3px; }
+.detail-stat .sv { font-size: 15px; font-weight: 700; }
+.detail-content { padding: 0 16px 80px; }
+
+/* Timeline */
+.timeline-item { display: flex; gap: 12px; margin-bottom: 8px; }
+.tl-dot-col { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.tl-dot.red { background: var(--red); }
+.tl-dot.amber { background: var(--amber); }
+.tl-dot.purple { background: var(--purple); }
+.tl-dot.green { background: var(--green); }
+.tl-line { width: 1.5px; flex: 1; background: var(--border); margin-top: 4px; min-height: 16px; }
+.tl-card { flex: 1; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; }
+.tl-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.tl-desc { font-size: 13px; font-weight: 600; flex: 1; }
+.tl-date { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.tl-amt { font-size: 13px; font-weight: 700; margin-top: 3px; }
+.tl-amt.red { color: var(--red); }
+.tl-amt.amber { color: var(--amber); }
+.tl-amt.purple { color: var(--purple); }
+.tl-amt.green { color: var(--green); }
+
+/* FAB */
+.fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: var(--text); color: white; border: none; font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,0,0,0.25); z-index: 100; }
+
+/* Modals */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: flex-end; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; padding: 20px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h2 { font-size: 16px; font-weight: 700; }
+.modal-close { background: var(--surface2); border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; cursor: pointer; color: var(--text2); }
+.form-group { margin-bottom: 14px; }
+.form-group label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; font-weight: 600; }
+.form-group select, .form-group input { width: 100%; padding: 12px 14px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 15px; background: var(--surface); color: var(--text); outline: none; -webkit-appearance: none; }
+.form-group select:focus, .form-group input:focus { border-color: var(--green); }
+.submit-btn { width: 100%; padding: 14px; background: var(--text); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+.submit-btn.green { background: var(--green); }
+.submit-btn.amber { background: var(--amber); }
+.submit-btn.red { background: var(--red); }
+.type-toggle { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.type-btn { flex: 1; padding: 10px 8px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); font-size: 12px; cursor: pointer; font-weight: 600; color: var(--text2); min-width: 70px; text-align: center; }
+.type-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+.settings-row { background: var(--surface); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 8px; border: 0.5px solid var(--border); }
+.settings-row label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; }
+.settings-row input { width: 100%; padding: 8px 12px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg); color: var(--text); }
+.save-btn { width: 100%; padding: 13px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+
+.empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 14px; }
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 300; opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-name">👩 Jessa</div>
+      <div class="header-sub">Salary & Advance Tracker</div>
+    </div>
+    <button class="sync-btn" onclick="syncData()">⟳ Sync</button>
+  </div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('dashboard',this)">Dashboard</button>
+  <button class="nav-btn" onclick="showPage('payslip',this)">Payslip</button>
+  <button class="nav-btn" onclick="showPage('history',this)">History</button>
+  <button class="nav-btn" onclick="showPage('settings',this)">Settings</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page active">
+
+  <div class="section-title">This Month</div>
+  <div class="month-card">
+    <div class="month-stats">
+      <div class="month-stat">
+        <div class="ms-label">Salary Released</div>
+        <div class="ms-val green" id="dash-salary">₱0</div>
+      </div>
+      <div class="month-stat">
+        <div class="ms-label">Deducted</div>
+        <div class="ms-val red" id="dash-deducted">₱0</div>
+      </div>
+      <div class="month-stat">
+        <div class="ms-label">Take Home</div>
+        <div class="ms-val amber" id="dash-takehome">₱0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Overall Advance Balance</div>
+  <div class="overall-card">
+    <div class="overall-stat">
+      <div class="ol">Total Outstanding</div>
+      <div class="ov" id="dash-outstanding">₱0</div>
+    </div>
+    <div class="overall-stat" style="text-align:right">
+      <div class="ol">Total Paid Back</div>
+      <div class="ov" id="dash-paid-back">₱0</div>
+    </div>
+  </div>
+
+  <div class="section-title">Advances — tap to see breakdown</div>
+  <div id="advances-list"></div>
+</div>
+
+<!-- PAYSLIP -->
+<div id="payslip" class="page">
+  <div class="section-title">Select Period</div>
+  <div class="period-selector">
+    <button class="period-btn active" onclick="setPayslipPeriod('1st',this)">1st Half (1–15)</button>
+    <button class="period-btn" onclick="setPayslipPeriod('2nd',this)">2nd Half (16–30)</button>
+  </div>
+  <div class="payslip">
+    <div class="payslip-header"><h2>Pay Slip</h2><p id="payslip-month-label"></p></div>
+    <div class="payslip-name"><div class="name">Jessa</div><div class="period" id="payslip-period-label"></div></div>
+    <div class="payslip-row"><span class="key">Base Salary (half month)</span><span class="val">₱5,000.00</span></div>
+    <div class="payslip-row"><span class="key">Advance Deductions</span><span class="val red" id="ps-deductions">₱0.00</span></div>
+    <div class="payslip-total"><span class="key">Take Home Pay</span><span class="val" id="ps-takehome">₱5,000.00</span></div>
+    <div class="payslip-note" id="ps-note">No deductions this period 🎉</div>
+  </div>
+  <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:8px;">Screenshot this to show Jessa her pay details</p>
+</div>
+
+<!-- HISTORY -->
+<div id="history" class="page">
+  <div class="section-title">All Records</div>
+  <div id="history-list"></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="page">
+  <div class="section-title">Google Sheet Connection</div>
+  <div class="settings-row">
+    <label>Apps Script Web App URL</label>
+    <input type="url" id="script-url" placeholder="https://script.google.com/..." />
+  </div>
+  <button class="save-btn" onclick="saveSettings()">Save & Test Connection</button>
+  <div class="section-title" style="margin-top:24px">Current Month</div>
+  <div class="settings-row">
+    <label>Billing month</label>
+    <input type="month" id="billing-month" />
+  </div>
+  <button class="save-btn" onclick="saveMonth()">Update Month</button>
+</div>
+
+<!-- ADVANCE DETAIL VIEW -->
+<div class="detail-view" id="detail-view">
+  <div class="detail-header">
+    <button class="back-btn" onclick="closeDetail()">←</button>
+    <h2 id="detail-title">Advance</h2>
+  </div>
+  <div class="detail-balance-card">
+    <div class="rem-label">Remaining Balance</div>
+    <div class="rem-amt" id="detail-remaining">₱0</div>
+    <div class="detail-stats">
+      <div class="detail-stat"><div class="sl">Total Borrowed</div><div class="sv" id="detail-total">₱0</div></div>
+      <div class="detail-stat"><div class="sl">Total Paid Back</div><div class="sv" id="detail-paid">₱0</div></div>
+    </div>
+  </div>
+  <div class="detail-content">
+    <div class="section-title">Breakdown History</div>
+    <div id="detail-timeline"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Log Entry</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="type-toggle">
+      <button class="type-btn active" onclick="setType('salary',this)">💵 Salary</button>
+      <button class="type-btn" onclick="setType('advance',this)">📋 Advance</button>
+      <button class="type-btn" onclick="setType('deduction',this)">✂️ Deduct</button>
+      <button class="type-btn" onclick="setType('payment',this)">✅ Payment</button>
+    </div>
+
+    <div id="fields-salary">
+      <div class="form-group"><label>Amount (₱)</label><input type="number" id="sal-amount" placeholder="5000" inputmode="decimal"/></div>
+      <div class="form-group"><label>Period</label>
+        <select id="sal-period"><option value="1st half">1st Half (1–15)</option><option value="2nd half">2nd Half (16–30)</option></select>
+      </div>
+      <div class="form-group"><label>Date Released</label><input type="date" id="sal-date"/></div>
+      <div class="form-group"><label>Notes (optional)</label><input type="text" id="sal-notes" placeholder="e.g. May 15 salary"/></div>
+      <button class="submit-btn green" onclick="submitEntry()">Save Salary</button>
+    </div>
+
+    <div id="fields-advance" style="display:none">
+      <div class="form-group"><label>What is the advance for?</label><input type="text" id="adv-reason" placeholder="e.g. Medicine, Emergency"/></div>
+      <div class="form-group"><label>Add to which bucket?</label><select id="adv-bucket"><option value="">Select</option></select></div>
+      <div class="form-group"><label>Amount (₱)</label><input type="number" id="adv-amount" placeholder="0.00" inputmode="decimal"/></div>
+      <div class="form-group"><label>Date</label><input type="date" id="adv-date"/></div>
+      <button class="submit-btn red" onclick="submitEntry()">Log Advance</button>
+    </div>
+
+    <div id="fields-deduction" style="display:none">
+      <div class="form-group"><label>Deduct from which advance?</label><select id="ded-advance"><option value="">Select</option></select></div>
+      <div class="form-group"><label>Amount Deducted (₱)</label><input type="number" id="ded-amount" placeholder="0.00" inputmode="decimal"/></div>
+      <div class="form-group"><label>Date</label><input type="date" id="ded-date"/></div>
+      <button class="submit-btn amber" onclick="submitEntry()">Save Deduction</button>
+    </div>
+
+    <div id="fields-payment" style="display:none">
+      <div class="form-group"><label>Payment toward which advance?</label><select id="pay-advance"><option value="">Select</option></select></div>
+      <div class="form-group"><label>Amount Paid (₱)</label><input type="number" id="pay-amount" placeholder="0.00" inputmode="decimal"/></div>
+      <div class="form-group"><label>Date</label><input type="date" id="pay-date"/></div>
+      <button class="submit-btn" onclick="submitEntry()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" onclick="openModal()">+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+let state = {
+  advances: [
+    { id:'adv_sugar', name:"Sugar's Phone", total:14000, paid:12000, active:true },
+    { id:'adv_jec',   name:'Ate Jec',       total:11000, paid:10000, active:true },
+  ],
+  transactions: [
+    // Advances taken
+    { id:'t1',  type:'advance',   advId:'adv_sugar', desc:"Sugar's Phone",       amount:14000, date:'2025-11-30' },
+    { id:'t2',  type:'advance',   advId:'adv_jec',   desc:'Pamasahe',            amount:7000,  date:'2025-11-16' },
+    { id:'t3',  type:'advance',   advId:'adv_jec',   desc:'Patanim ng Luya',     amount:4000,  date:'2026-02-08' },
+    // Deductions — Sugar's Phone (every 1st half)
+    { id:'t4',  type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2025-12-15' },
+    { id:'t6',  type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2026-01-15' },
+    { id:'t8',  type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2026-02-15' },
+    { id:'t10', type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2026-03-15' },
+    { id:'t12', type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2026-04-15' },
+    { id:'t14', type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2026-05-15' },
+    // Deductions — Ate Jec (every 2nd half)
+    { id:'t5',  type:'deduction', advId:'adv_jec',   desc:'Deduction from salary', amount:2000, date:'2025-12-30' },
+    { id:'t7',  type:'deduction', advId:'adv_jec',   desc:'Deduction from salary', amount:2000, date:'2026-01-30' },
+    { id:'t9',  type:'deduction', advId:'adv_jec',   desc:'Deduction from salary', amount:2000, date:'2026-02-28' },
+    { id:'t11', type:'deduction', advId:'adv_jec',   desc:'Deduction from salary', amount:2000, date:'2026-03-31' },
+    { id:'t13', type:'deduction', advId:'adv_jec',   desc:'Deduction from salary', amount:2000, date:'2026-04-30' },
+  ],
+  txType: 'salary',
+  payslipPeriod: '1st',
+  billingMonth: new Date().toISOString().slice(0,7),
+  scriptUrl: '',
+  detailAdvId: null,
+};
+
+function init() {
+  const saved = localStorage.getItem('jessa_v3');
+  if (saved) { try { state = {...state, ...JSON.parse(saved)}; } catch(e){} }
+  if (!state.billingMonth) state.billingMonth = new Date().toISOString().slice(0,7);
+  const today = new Date().toISOString().split('T')[0];
+  ['sal-date','adv-date','ded-date','pay-date'].forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
+  document.getElementById('billing-month').value = state.billingMonth;
+  if (state.scriptUrl) document.getElementById('script-url').value = state.scriptUrl;
+  render();
+}
+
+function save() { localStorage.setItem('jessa_v3', JSON.stringify(state)); }
+function fmt(n) { return '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function getTag(adv) {
+  const rem = adv.total - adv.paid;
+  const pct = adv.paid / adv.total;
+  if (rem <= 0) return { label:'✓ Fully Paid!', cls:'tag-paid', fillCls:'fill-paid' };
+  if (pct >= 0.75) return { label:'Almost There!', cls:'tag-almost', fillCls:'fill-almost' };
+  return { label:'In Progress', cls:'tag-ongoing', fillCls:'fill-ongoing' };
+}
+
+function render() { renderDashboard(); renderPayslip(); renderHistory(); populateSelects(); }
+
+function renderDashboard() {
+  const month = state.billingMonth;
+  const mTxs = state.transactions.filter(t => t.date && t.date.startsWith(month));
+  const salAmt = mTxs.filter(t => t.type==='salary').reduce((a,t)=>a+t.amount,0);
+  const dedAmt = mTxs.filter(t => t.type==='deduction').reduce((a,t)=>a+t.amount,0);
+  const outstanding = state.advances.reduce((a,adv)=>a+Math.max(0,adv.total-adv.paid),0);
+  const paidBack = state.advances.reduce((a,adv)=>a+adv.paid,0);
+
+  document.getElementById('dash-salary').textContent = fmt(salAmt);
+  document.getElementById('dash-deducted').textContent = fmt(dedAmt);
+  document.getElementById('dash-takehome').textContent = fmt(salAmt - dedAmt);
+  document.getElementById('dash-outstanding').textContent = fmt(outstanding);
+  document.getElementById('dash-paid-back').textContent = fmt(paidBack);
+
+  const list = document.getElementById('advances-list');
+  list.innerHTML = '';
+  if (!state.advances.length) { list.innerHTML = '<div class="empty">No advances 🎉</div>'; return; }
+  state.advances.forEach(adv => {
+    const rem = Math.max(0, adv.total - adv.paid);
+    const pct = Math.min(1, adv.paid / adv.total);
+    const tag = getTag(adv);
+    const div = document.createElement('div');
+    div.className = 'advance-card';
+    div.innerHTML = `
+      <div class="advance-top">
+        <div class="advance-row1">
+          <div class="advance-name">${adv.name}</div>
+          <div class="advance-tag ${tag.cls}">${tag.label}</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill ${tag.fillCls}" style="width:${Math.round(pct*100)}%"></div></div>
+        <div class="advance-nums">
+          <span>Paid: <b>${fmt(adv.paid)}</b></span>
+          <span>of <b>${fmt(adv.total)}</b></span>
+        </div>
+      </div>
+      <div class="advance-bottom">
+        <span>Remaining: <b>${fmt(rem)}</b></span>
+        <span style="color:var(--text3);font-size:18px">›</span>
+      </div>`;
+    div.onclick = () => openDetail(adv.id);
+    list.appendChild(div);
+  });
+}
+
+function openDetail(advId) {
+  state.detailAdvId = advId;
+  const adv = state.advances.find(a => a.id === advId);
+  const rem = Math.max(0, adv.total - adv.paid);
+  document.getElementById('detail-title').textContent = adv.name;
+  document.getElementById('detail-remaining').textContent = fmt(rem);
+  document.getElementById('detail-total').textContent = fmt(adv.total);
+  document.getElementById('detail-paid').textContent = fmt(adv.paid);
+
+  const txs = state.transactions
+    .filter(t => t.advId === advId)
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  const tl = document.getElementById('detail-timeline');
+  tl.innerHTML = '';
+  if (!txs.length) { tl.innerHTML = '<div class="empty">No records yet</div>'; }
+  else {
+    txs.forEach((tx, i) => {
+      const isLast = i === txs.length - 1;
+      let dotCls='red', amtCls='red', sign='+', label='Borrowed';
+      if (tx.type==='deduction') { dotCls='amber'; amtCls='amber'; sign='-'; label='Deducted'; }
+      else if (tx.type==='payment') { dotCls='purple'; amtCls='purple'; sign='-'; label='Paid back'; }
+
+      const item = document.createElement('div');
+      item.className = 'timeline-item';
+      item.innerHTML = `
+        <div class="tl-dot-col">
+          <div class="tl-dot ${dotCls}"></div>
+          ${!isLast ? '<div class="tl-line"></div>' : ''}
+        </div>
+        <div class="tl-card">
+          <div class="tl-top">
+            <div class="tl-desc">${label}: ${tx.desc}</div>
+            <div class="tl-date">${tx.date}</div>
+          </div>
+          <div class="tl-amt ${amtCls}">${sign}${fmt(tx.amount)}</div>
+        </div>`;
+      tl.appendChild(item);
+    });
+  }
+  document.getElementById('detail-view').classList.add('open');
+}
+
+function closeDetail() { document.getElementById('detail-view').classList.remove('open'); }
+
+function renderPayslip() {
+  const month = state.billingMonth;
+  const period = state.payslipPeriod;
+  const periodTxs = state.transactions.filter(t => {
+    if (!t.date || !t.date.startsWith(month)) return false;
+    const day = parseInt(t.date.split('-')[2]);
+    return period==='1st' ? day<=15 : day>15;
+  });
+  const ded = periodTxs.filter(t=>t.type==='deduction').reduce((a,t)=>a+t.amount,0);
+  const now = new Date();
+  const mn = now.toLocaleString('en-PH',{month:'long'});
+  const yr = now.getFullYear();
+  document.getElementById('payslip-month-label').textContent = now.toLocaleString('en-PH',{month:'long',year:'numeric'});
+  document.getElementById('payslip-period-label').textContent = period==='1st'
+    ? `1st Half: ${mn} 1–15, ${yr}` : `2nd Half: ${mn} 16–30, ${yr}`;
+  document.getElementById('ps-deductions').textContent = ded>0 ? '-'+fmt(ded) : fmt(0);
+  document.getElementById('ps-takehome').textContent = fmt(Math.max(0,5000-ded));
+  document.getElementById('ps-note').textContent = ded===0
+    ? 'No deductions this period 🎉'
+    : `₱${ded.toLocaleString()} deducted toward advance payments`;
+}
+
+function setPayslipPeriod(period, btn) {
+  state.payslipPeriod = period;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPayslip();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!state.transactions.length) { list.innerHTML = '<div class="empty">No records yet</div>'; return; }
+  list.innerHTML = '';
+  const sorted = [...state.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+  sorted.forEach(tx => {
+    const adv = state.advances.find(a=>a.id===tx.advId);
+    let amtCls='green', sign='+';
+    if (tx.type==='advance') { amtCls='red'; sign='+'; }
+    else if (tx.type==='deduction') { amtCls='amber'; sign='-'; }
+    else if (tx.type==='payment') { amtCls='purple'; sign='-'; }
+
+    const div = document.createElement('div');
+    div.className = 'tx-item';
+    div.innerHTML = `
+      <div class="tx-top">
+        <div class="tx-left">
+          <div class="tx-desc">${tx.desc}</div>
+          <div class="tx-meta">${tx.date}${adv?' · '+adv.name:''}</div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-amt ${amtCls}">${sign}${fmt(tx.amount)}</div>
+          <span class="tx-badge ${tx.type}">${tx.type}</span>
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function populateSelects() {
+  const bucket = document.getElementById('adv-bucket');
+  if (bucket) {
+    bucket.innerHTML = '<option value="">Select bucket</option>';
+    state.advances.forEach(adv => {
+      const o = document.createElement('option');
+      o.value=adv.id; o.textContent=adv.name; bucket.appendChild(o);
+    });
+    const n = document.createElement('option');
+    n.value='__new__'; n.textContent='+ New bucket'; bucket.appendChild(n);
+  }
+  ['ded-advance','pay-advance'].forEach(id => {
+    const sel = document.getElementById(id); if(!sel) return;
+    sel.innerHTML = '<option value="">Select</option>';
+    state.advances.filter(a=>(a.total-a.paid)>0).forEach(adv=>{
+      const o = document.createElement('option');
+      o.value=adv.id; o.textContent=`${adv.name} (₱${Math.max(0,adv.total-adv.paid).toLocaleString()} left)`;
+      sel.appendChild(o);
+    });
+  });
+}
+
+function setType(type, btn) {
+  state.txType = type;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['salary','advance','deduction','payment'].forEach(t=>{
+    document.getElementById('fields-'+t).style.display = t===type?'block':'none';
+  });
+}
+
+function openModal() { document.getElementById('modal').classList.add('open'); populateSelects(); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function submitEntry() {
+  const type = state.txType;
+  const today = new Date().toISOString().split('T')[0];
+  let tx = { id:'tx_'+Date.now(), type, date:today };
+
+  if (type==='salary') {
+    const amount = parseFloat(document.getElementById('sal-amount').value);
+    const period = document.getElementById('sal-period').value;
+    const date   = document.getElementById('sal-date').value;
+    const notes  = document.getElementById('sal-notes').value.trim();
+    if (!amount||amount<=0) return showToast('Enter a valid amount');
+    tx.amount=amount; tx.date=date; tx.desc=notes||`Salary — ${period}`; tx.period=period;
+
+  } else if (type==='advance') {
+    const reason   = document.getElementById('adv-reason').value.trim();
+    const bucketId = document.getElementById('adv-bucket').value;
+    const amount   = parseFloat(document.getElementById('adv-amount').value);
+    const date     = document.getElementById('adv-date').value;
+    if (!reason) return showToast('Enter what the advance is for');
+    if (!amount||amount<=0) return showToast('Enter a valid amount');
+    if (!bucketId) return showToast('Select a bucket');
+    if (bucketId==='__new__') {
+      const newId = 'adv_'+Date.now();
+      state.advances.push({ id:newId, name:reason, total:amount, paid:0, active:true });
+      tx.advId=newId;
+    } else {
+      state.advances.find(a=>a.id===bucketId).total += amount;
+      tx.advId=bucketId;
+    }
+    tx.amount=amount; tx.date=date; tx.desc=reason;
+
+  } else if (type==='deduction') {
+    const advId  = document.getElementById('ded-advance').value;
+    const amount = parseFloat(document.getElementById('ded-amount').value);
+    const date   = document.getElementById('ded-date').value;
+    if (!advId) return showToast('Select an advance');
+    if (!amount||amount<=0) return showToast('Enter a valid amount');
+    state.advances.find(a=>a.id===advId).paid += amount;
+    tx.advId=advId; tx.amount=amount; tx.date=date; tx.desc='Deduction from salary';
+
+  } else if (type==='payment') {
+    const advId  = document.getElementById('pay-advance').value;
+    const amount = parseFloat(document.getElementById('pay-amount').value);
+    const date   = document.getElementById('pay-date').value;
+    if (!advId) return showToast('Select an advance');
+    if (!amount||amount<=0) return showToast('Enter a valid amount');
+    state.advances.find(a=>a.id===advId).paid += amount;
+    tx.advId=advId; tx.amount=amount; tx.date=date; tx.desc='Cash payment';
+  }
+
+  state.transactions.unshift(tx);
+  logToSheet(tx);
+  save(); render(); closeModal();
+  showToast('Saved ✓');
+}
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (id==='payslip') renderPayslip();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+function saveSettings() {
+  state.scriptUrl = document.getElementById('script-url').value.trim();
+  save();
+  if (state.scriptUrl) syncData(); else showToast('Enter a valid URL first');
+}
+
+function saveMonth() {
+  state.billingMonth = document.getElementById('billing-month').value;
+  save(); render(); showToast('Month updated');
+}
+
+async function logToSheet(tx) {
+  if (!state.scriptUrl) return;
+  try {
+    await fetch(state.scriptUrl, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'log', ...tx, advances:state.advances })
+    });
+  } catch(e){}
+}
+
+async function syncData() {
+  if (!state.scriptUrl) { showToast('Set Script URL in Settings first'); return; }
+  showToast('Syncing...');
+  try {
+    const res = await fetch(state.scriptUrl+'?action=get');
+    const data = await res.json();
+    if (data.advances) state.advances = data.advances;
+    if (data.transactions) state.transactions = data.transactions;
+    save(); render();
+    showToast('Synced ✓');
+  } catch(e) { showToast('Sync failed. Check URL in Settings.'); }
+}
+
+init();
+</script>
+</body>
+</html>
