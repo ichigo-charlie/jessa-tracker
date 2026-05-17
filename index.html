@@ -487,7 +487,11 @@ function normalizeDate(d) {
     return date.toISOString().split('T')[0];
   }
   const s = String(d).trim();
+  // Already clean date
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // ISO timestamp like 2026-05-15T07:00:00.000Z
+  if (s.includes('T')) return s.split('T')[0];
+  // Other formats like 15-May-2026
   const parsed = new Date(s);
   if (!isNaN(parsed)) return parsed.toISOString().split('T')[0];
   return s;
@@ -535,13 +539,17 @@ function renderHistory() {
     else if (tx.type==='deduction') { amtCls='amber'; sign='-'; }
     else if (tx.type==='payment') { amtCls='purple'; sign='-'; }
 
+    const advName = adv ? adv.name : '';
+    const fallbackDesc = tx.type === 'salary' ? 'Salary' : tx.type === 'deduction' ? 'Deduction from salary' : tx.type === 'advance' ? 'Advance' : tx.type;
+    const displayDesc = tx.desc || fallbackDesc;
+    const displayDate = normalizeDate(tx.date);
     const div = document.createElement('div');
     div.className = 'tx-item';
     div.innerHTML = `
       <div class="tx-top">
         <div class="tx-left">
-          <div class="tx-desc">${tx.desc}</div>
-          <div class="tx-meta">${tx.date}${adv ? ' · ' + adv.name : ''}</div>
+          <div class="tx-desc">${displayDesc}</div>
+          <div class="tx-meta">${displayDate}${advName ? ' · ' + advName : ''}</div>
         </div>
         <div class="tx-right">
           <div class="tx-amt ${amtCls}">${sign}${fmt(tx.amount)}</div>
