@@ -199,24 +199,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <!-- DASHBOARD -->
 <div id="dashboard" class="page active">
 
-  <div class="section-title">This Month</div>
-  <div class="month-card">
-    <div class="month-stats">
-      <div class="month-stat">
-        <div class="ms-label">Salary Released</div>
-        <div class="ms-val green" id="dash-salary">₱0</div>
-      </div>
-      <div class="month-stat">
-        <div class="ms-label">Deducted</div>
-        <div class="ms-val red" id="dash-deducted">₱0</div>
-      </div>
-      <div class="month-stat">
-        <div class="ms-label">Take Home</div>
-        <div class="ms-val amber" id="dash-takehome">₱0</div>
-      </div>
-    </div>
-  </div>
-
   <div class="section-title">Overall Advance Balance</div>
   <div class="overall-card">
     <div class="overall-stat">
@@ -355,6 +337,18 @@ let state = {
     { id:'t1',  type:'advance',   advId:'adv_sugar', desc:"Sugar's Phone",       amount:14000, date:'2025-11-30' },
     { id:'t2',  type:'advance',   advId:'adv_jec',   desc:'Pamasahe',            amount:7000,  date:'2025-11-16' },
     { id:'t3',  type:'advance',   advId:'adv_jec',   desc:'Patanim ng Luya',     amount:4000,  date:'2026-02-08' },
+    // Salary entries from Dec 2025
+    { id:'s1',  type:'salary', desc:'Salary — 1st half', amount:5000, date:'2025-12-15' },
+    { id:'s2',  type:'salary', desc:'Salary — 2nd half', amount:5000, date:'2025-12-30' },
+    { id:'s3',  type:'salary', desc:'Salary — 1st half', amount:5000, date:'2026-01-15' },
+    { id:'s4',  type:'salary', desc:'Salary — 2nd half', amount:5000, date:'2026-01-30' },
+    { id:'s5',  type:'salary', desc:'Salary — 1st half', amount:5000, date:'2026-02-15' },
+    { id:'s6',  type:'salary', desc:'Salary — 2nd half', amount:5000, date:'2026-02-28' },
+    { id:'s7',  type:'salary', desc:'Salary — 1st half', amount:5000, date:'2026-03-15' },
+    { id:'s8',  type:'salary', desc:'Salary — 2nd half', amount:5000, date:'2026-03-31' },
+    { id:'s9',  type:'salary', desc:'Salary — 1st half', amount:5000, date:'2026-04-15' },
+    { id:'s10', type:'salary', desc:'Salary — 2nd half', amount:5000, date:'2026-04-30' },
+    { id:'s11', type:'salary', desc:'Salary — 1st half', amount:5000, date:'2026-05-15' },
     // Deductions — Sugar's Phone (every 1st half)
     { id:'t4',  type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2025-12-15' },
     { id:'t6',  type:'deduction', advId:'adv_sugar', desc:'Deduction from salary', amount:2000, date:'2026-01-15' },
@@ -402,15 +396,12 @@ function render() { renderDashboard(); renderPayslip(); renderHistory(); populat
 
 function renderDashboard() {
   const month = state.billingMonth;
-  const mTxs = state.transactions.filter(t => t.date && t.date.startsWith(month));
+  const mTxs = state.transactions.filter(t => normalizeDate(t.date).startsWith(month));
   const salAmt = mTxs.filter(t => t.type==='salary').reduce((a,t)=>a+t.amount,0);
   const dedAmt = mTxs.filter(t => t.type==='deduction').reduce((a,t)=>a+t.amount,0);
   const outstanding = state.advances.reduce((a,adv)=>a+Math.max(0,adv.total-adv.paid),0);
   const paidBack = state.advances.reduce((a,adv)=>a+adv.paid,0);
 
-  document.getElementById('dash-salary').textContent = fmt(salAmt);
-  document.getElementById('dash-deducted').textContent = fmt(dedAmt);
-  document.getElementById('dash-takehome').textContent = fmt(salAmt - dedAmt);
   document.getElementById('dash-outstanding').textContent = fmt(outstanding);
   document.getElementById('dash-paid-back').textContent = fmt(paidBack);
 
@@ -489,12 +480,26 @@ function openDetail(advId) {
 
 function closeDetail() { document.getElementById('detail-view').classList.remove('open'); }
 
+function normalizeDate(d) {
+  if (!d) return '';
+  if (typeof d === 'number') {
+    const date = new Date((d - 25569) * 86400 * 1000);
+    return date.toISOString().split('T')[0];
+  }
+  const s = String(d).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const parsed = new Date(s);
+  if (!isNaN(parsed)) return parsed.toISOString().split('T')[0];
+  return s;
+}
+
 function renderPayslip() {
   const month = state.billingMonth;
   const period = state.payslipPeriod;
   const periodTxs = state.transactions.filter(t => {
-    if (!t.date || !t.date.startsWith(month)) return false;
-    const day = parseInt(t.date.split('-')[2]);
+    const d = normalizeDate(t.date);
+    if (!d || !d.startsWith(month)) return false;
+    const day = parseInt(d.split('-')[2]);
     return period==='1st' ? day<=15 : day>15;
   });
   const ded = periodTxs.filter(t=>t.type==='deduction').reduce((a,t)=>a+t.amount,0);
@@ -522,7 +527,7 @@ function renderHistory() {
   const list = document.getElementById('history-list');
   if (!state.transactions.length) { list.innerHTML = '<div class="empty">No records yet</div>'; return; }
   list.innerHTML = '';
-  const sorted = [...state.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+  const sorted = [...state.transactions].sort((a,b)=>normalizeDate(b.date).localeCompare(normalizeDate(a.date)));
   sorted.forEach(tx => {
     const adv = state.advances.find(a=>a.id===tx.advId);
     let amtCls='green', sign='+';
@@ -673,6 +678,15 @@ async function logToSheet(tx) {
   } catch(e){}
 }
 
+function cleanDate(raw) {
+  if (!raw) return '';
+  if (typeof raw === 'string' && raw.includes('T')) return raw.split('T')[0];
+  const s = String(raw);
+  if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+  try { const d = new Date(raw); if (!isNaN(d)) return d.toISOString().split('T')[0]; } catch(e){}
+  return s;
+}
+
 async function syncData() {
   if (!state.scriptUrl) { showToast('Set Script URL in Settings first'); return; }
   showToast('Syncing...');
@@ -680,7 +694,12 @@ async function syncData() {
     const res = await fetch(state.scriptUrl+'?action=get');
     const data = await res.json();
     if (data.advances) state.advances = data.advances;
-    if (data.transactions) state.transactions = data.transactions;
+    if (data.transactions) {
+      const seen = new Set();
+      state.transactions = data.transactions
+        .map(tx => ({ ...tx, date: cleanDate(tx.date) }))
+        .filter(tx => { if (seen.has(tx.id)) return false; seen.add(tx.id); return true; });
+    }
     save(); render();
     showToast('Synced ✓');
   } catch(e) { showToast('Sync failed. Check URL in Settings.'); }
