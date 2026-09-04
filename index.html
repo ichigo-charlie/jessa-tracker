@@ -365,7 +365,7 @@ let state = {
   ],
   txType: 'salary',
   payslipPeriod: '1st',
-  billingMonth: new Date().toISOString().slice(0,7),
+  billingMonth: localMonthString(),
   scriptUrl: '',
   detailAdvId: null,
 };
@@ -373,8 +373,8 @@ let state = {
 function init() {
   const saved = localStorage.getItem('jessa_v3');
   if (saved) { try { state = {...state, ...JSON.parse(saved)}; } catch(e){} }
-  if (!state.billingMonth) state.billingMonth = new Date().toISOString().slice(0,7);
-  const today = new Date().toISOString().split('T')[0];
+  if (!state.billingMonth) state.billingMonth = localMonthString();
+  const today = localDateString();
   ['sal-date','adv-date','ded-date','pay-date'].forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
   document.getElementById('billing-month').value = state.billingMonth;
   if (state.scriptUrl) document.getElementById('script-url').value = state.scriptUrl;
@@ -383,6 +383,37 @@ function init() {
 
 function save() { localStorage.setItem('jessa_v3', JSON.stringify(state)); }
 function fmt(n) { return '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function localDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function localMonthString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function normalizeTransaction(tx) {
+  const desc = String(tx.desc || '').trim();
+  let type = String(tx.type || '').trim().toLowerCase();
+
+  // Historical sheet rows use "payment" for salary deductions.
+  if (type === 'payment' && desc.toLowerCase() === 'deduction from salary') {
+    type = 'deduction';
+  }
+
+  return {
+    ...tx,
+    type,
+    desc,
+    amount: Number(tx.amount) || 0,
+    date: cleanDate(tx.date)
+  };
+}
 
 function getTag(adv) {
   const rem = adv.total - adv.paid;
@@ -506,11 +537,14 @@ function renderPayslip() {
     const day = parseInt(d.split('-')[2]);
     return period==='1st' ? day<=15 : day>15;
   });
-  const ded = periodTxs.filter(t=>t.type==='deduction').reduce((a,t)=>a+t.amount,0);
-  const now = new Date();
-  const mn = now.toLocaleString('en-PH',{month:'long'});
-  const yr = now.getFullYear();
-  document.getElementById('payslip-month-label').textContent = now.toLocaleString('en-PH',{month:'long',year:'numeric'});
+  const ded = periodTxs.filter(t=>t.type==='deduction').reduce((a,t)=>a+Number(t.amount || 0),0);
+
+  const [yrText, monthText] = month.split('-');
+  const selectedMonth = new Date(Number(yrText), Number(monthText) - 1, 1);
+  const mn = selectedMonth.toLocaleString('en-PH',{month:'long'});
+  const yr = selectedMonth.getFullYear();
+  document.getElementById('payslip-month-label').textContent =
+    selectedMonth.toLocaleString('en-PH',{month:'long',year:'numeric'});
   document.getElementById('payslip-period-label').textContent = period==='1st'
     ? `1st Half: ${mn} 1–15, ${yr}` : `2nd Half: ${mn} 16–30, ${yr}`;
   document.getElementById('ps-deductions').textContent = ded>0 ? '-'+fmt(ded) : fmt(0);
@@ -596,7 +630,7 @@ function closeModal() { document.getElementById('modal').classList.remove('open'
 
 function submitEntry() {
   const type = state.txType;
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateString();
   let tx = { id:'tx_'+Date.now(), type, date:today };
 
   if (type==='salary') {
@@ -701,11 +735,17 @@ async function syncData() {
   try {
     const res = await fetch(state.scriptUrl+'?action=get');
     const data = await res.json();
-    if (data.advances) state.advances = data.advances;
+    if (data.advances) {
+      state.advances = data.advances.map(adv => ({
+        ...adv,
+        total: Number(adv.total) || 0,
+        paid: Number(adv.paid) || 0
+      }));
+    }
     if (data.transactions) {
       const seen = new Set();
       state.transactions = data.transactions
-        .map(tx => ({ ...tx, date: cleanDate(tx.date) }))
+        .map(normalizeTransaction)
         .filter(tx => { if (seen.has(tx.id)) return false; seen.add(tx.id); return true; });
     }
     save(); render();
